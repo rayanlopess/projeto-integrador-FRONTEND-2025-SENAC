@@ -54,6 +54,10 @@ export const routes: Routes = [
   {
     path: 'finalizacao',
     loadComponent: () => import('./funcionalidades/finalizacao/finalizacao.page').then( m => m.FinalizacaoPage)
+  },
+  {
+    path: 'alteracao-senha',
+    loadComponent: () => import('./sistema-de-login/alteracao-senha/alteracao-senha.page').then( m => m.AlteracaoSenhaPage)
   }
   
 ];

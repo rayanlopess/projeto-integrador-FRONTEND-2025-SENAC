@@ -1,20 +1,41 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonicModule } from '@ionic/angular';
+import { AutenticacaoService } from 'src/app/service/autenticacao.service';
+
+import { addIcons } from 'ionicons';
+import { add, trash, chevronDown, personCircle, lockClosed, person, lockOpen, mail} from 'ionicons/icons';
+import { Router, RouterLink } from '@angular/router';
+import { AlertController } from '@ionic/angular/standalone';
+
+import { Title } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-carrinho',
   templateUrl: './carrinho.page.html',
   styleUrls: ['./carrinho.page.scss'],
   standalone: true,
-  imports: [IonContent, IonHeader, IonTitle, IonToolbar, CommonModule, FormsModule]
+  imports: [IonicModule, CommonModule, FormsModule]
 })
 export class CarrinhoPage implements OnInit {
 
-  constructor() { }
+  public login:string = '';
+  public senha:string = '';
+
+  constructor(
+    public titleService: Title,
+    public autenticacaoService: AutenticacaoService,
+    public alertController: AlertController,
+    public rt: Router
+  ) { 
+    addIcons({ add, trash, chevronDown, personCircle, lockClosed, person, lockOpen, mail });
+  }
 
   ngOnInit() {
+
+    this.titleService.setTitle("Carrinho");
+
   }
 
 }

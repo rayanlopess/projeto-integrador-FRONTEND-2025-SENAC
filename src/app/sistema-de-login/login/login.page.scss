@@ -25,63 +25,80 @@ ion-content{
 }
 
 ion-card{
-    width: 100%;
+  width: 330px;
+  padding: 20px;
     --background: #e7dfd380; 
     border: 2px solid #e7dfd3;
     border-radius: 10px;
-    margin: auto;
     backdrop-filter: blur(8px);
 }
+ion-card-header{
+  --padding: 0;
+  --margin: 0;
+}
+.headers{
+      width: 80%;
+}
+ion-card-title {      
+    color: #e7dfd3;
+    font-size: 20px;
+}
+ion-card-subtitle {    
+  color: #e7dfd399;
+}
+ion-card-content{
+  width: 100%;
+}
 #img-logo{
-     width: 270px;
+      width: 200px;
      margin: auto;
      margin-top: 5%;
 }
 
 .input-barra{
-    width: 90%;
-    margin: auto;
+  width: 100%;
+  margin: auto;
 }
 .input-texto{
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px solid #e7dfd3;
-    width: 100%;
-    
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e7dfd3;
+  width: 100%;
+  
 }
 
 .icon-pessoa{
-    width: max-content;
+  width: max-content;
 
-    color: #e7dfd3;
-    padding-top: 10px;
-  
+  color: #e7dfd3;
+  padding-top: 10px;
+
 }
 .icon{
-    font-size: 24px;
+  font-size: 20px;
 }
 .lock-icon {
-  transition: all 1s ease-in-out;
-  transform: scale(1);
+transition: all 1s ease-in-out;
+transform: scale(1);
 }
 
 .lock-icon:active {
-  transform: scale(0.9);
+transform: scale(0.9);
 }
 
 /* Animação quando muda de estado */
 .lock-icon {
-  animation-duration: 0.3s;
-  animation-fill-mode: both;
+animation-duration: 0.3s;
+animation-fill-mode: both;
 }
 
 @keyframes bounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+0%, 100% { transform: scale(1); }
+50% { transform: scale(1.2); }
 }
 
 .lock-icon-animate {
-  animation-name: bounce;
+animation-name: bounce;
 }
 
 
@@ -91,103 +108,105 @@ ion-card{
 
 /* From Uiverse.io by AbanoubMagdy1 */ 
 .wave-group {
-    width: 100%;
-    position: relative;
- 
+  width: 100%;
+  position: relative;
+
 }
 
 .wave-group .input-tecido {
-  font-size: 18px;
-  padding: 10px 10px 10px 5px;
-  display: block;
-  width: 100%;
-  border: none;
-  color: #e7dfd3;
-  background: transparent;
+font-size: 14px;
+padding: 15px 10px 10px 0px;
+display: block;
+width: 100%;
+border: none;
+color: #e7dfd3;
+background: transparent;
 }
 
 .wave-group .input-tecido:focus {
-  outline: none;
+outline: none;
 }
 
 .wave-group .label {
-  color: #e7dfd3;
-  font-size: 18px;
-  font-weight: normal;
-  position: absolute;
-  pointer-events: none;
-  left: 10px;
-  top: 15px;
-  display: flex;
+color: #e7dfd3;
+font-size: 14px;
+font-weight: normal;
+position: absolute;
+pointer-events: none;
+left: 5px;
+top: 18px;
+display: flex;
 }
 
 .wave-group .label-char {
-  transition: 0.2s ease all;
-  transition-delay: calc(var(--index) * .02s);
+transition: 0.2s ease all;
+transition-delay: calc(var(--index) * .02s);
 }
 
 .wave-group .input-tecido:focus ~ label .label-char,
 .wave-group .input-tecido:valid ~ label .label-char {
-  
-    transform: translateY(-22px) translateX(-45px);
-    font-size: 14px;
-    color: #e7dfd3;
+
+  transform: translateY(-19px) translateX(-40px);
+  font-size: 12px;
+  color: #e7dfd3;
 }
 
 
 
 
 
-   .bar {
-            position: relative;
-            display: block;
-            width: 100%;
-            background-color: #e7dfd3;
-            height: 0px;
-            bottom: 0px;
-            transition: 0.2s ease all;
-            -moz-transition: 0.2s ease all;
-            -webkit-transition: 0.2s ease all;
-        }
-        
-        .bar::before, .bar::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            width: 0;
-            height: 3px;
-            background-color: #e7dfd3;
-            transition: 0.4s ease all;
-        }
-        
-        .bar::before {
-            left: 50%;
-        }
-        
-        .bar::after {
-            right: 50%;
-        }
-        
-        .input-barra:focus-within .bar::before,
-        .input-barra:focus-within .bar::after {
-            width: 50%;
-        }
-        
-        
+ .bar {
+          position: relative;
+          display: block;
+          width: 100%;
+          background-color: #e7dfd3;
+          height: 0px;
+          bottom: 0px;
+          transition: 0.2s ease all;
+          -moz-transition: 0.2s ease all;
+          -webkit-transition: 0.2s ease all;
+      }
+      
+      .bar::before, .bar::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          width: 0;
+          height: 3px;
+          background-color: #e7dfd3;
+          transition: 0.4s ease all;
+      }
+      
+      .bar::before {
+          left: 50%;
+      }
+      
+      .bar::after {
+          right: 50%;
+      }
+      
+      .input-barra:focus-within .bar::before,
+      .input-barra:focus-within .bar::after {
+          width: 50%;
+      }
+      
+      
 
 .div-btEntrar{
-   width: 100%;
-   display: flex;
-   justify-content: center;
-   margin-top: 12%;
-}
-.btEntrar{
-    --background: #31241c;
-    --color: #e7dfd3;
-    --padding: 10px !important;
-    width: 50%;
+ width: 100%;
+ display: flex;
+ justify-content: center;
+ margin-top: 12%;
 
 }
+.btEntrar{
+  --background: #31241c;
+  --color: #e7dfd3;
+  --padding: 10px !important;
+  width: 50%;
+
+}
+
 
 .esqueci-senha{
     margin-top: 10%;
@@ -199,4 +218,5 @@ ion-card{
 .tagA{
     color: #31241c;
     text-decoration: underline;
+    cursor: pointer;
 }

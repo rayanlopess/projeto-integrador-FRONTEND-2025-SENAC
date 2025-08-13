@@ -12,16 +12,15 @@ import { AlertController } from '@ionic/angular/standalone';
 import { Title } from '@angular/platform-browser';
 
 @Component({
-  selector: 'app-esqueci-senha',
-  templateUrl: './esqueci-senha.page.html',
-  styleUrls: ['./esqueci-senha.page.scss'],
+  selector: 'app-alteracao-senha',
+  templateUrl: './alteracao-senha.page.html',
+  styleUrls: ['./alteracao-senha.page.scss'],
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule]
 })
-export class EsqueciSenhaPage implements OnInit {
-
- 
+export class AlteracaoSenhaPage implements OnInit {
   isPasswordVisible = false;
+  isPasswordVisible1 = false;
    isAnimating = false;
   public login:string = '';
   public senha:string = '';
@@ -37,7 +36,7 @@ export class EsqueciSenhaPage implements OnInit {
 
   ngOnInit() {
 
-    this.titleService.setTitle("Recuperação de Senha");
+    this.titleService.setTitle("Alteração de Senha");
 
   }
 
@@ -52,4 +51,12 @@ export class EsqueciSenhaPage implements OnInit {
     }, 300); // Tempo igual à duração da animação
   }
 
+  togglePasswordVisibility1() {
+    this.isAnimating = true;
+    this.isPasswordVisible1= !this.isPasswordVisible1;
+    
+    setTimeout(() => {
+      this.isAnimating = false;
+    }, 300); // Tempo igual à duração da animação
+  }
 }
