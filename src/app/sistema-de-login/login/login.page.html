@@ -1,9 +1,108 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>login</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-toolbar>
+  <ion-buttons slot="start">
+    <ion-back-button default-href="#"></ion-back-button>
+  </ion-buttons>
+  <ion-title>Login</ion-title>
+</ion-toolbar>
 
 <ion-content [fullscreen]="true">
+  <ion-grid class="container">
+    <ion-row>
+      <ion-col>
+        <ion-card>
+          <ion-card-header>
+            <ion-img id="img-logo" src="../../../assets/images/brunch-logo-light.png"></ion-img>
+          </ion-card-header>
+
+          <ion-card-content>
+            <form action="">
+            <ion-grid>
+
+              <ion-row class="espacamento">
+                <ion-col>
+                  <div class="input-barra">
+                    <div class="input-texto">
+                      <div class="icon-pessoa">
+                        <ion-buttons>
+                          <ion-button>
+                            <ion-icon class="icon" name="person"></ion-icon>
+                          </ion-button>
+                        </ion-buttons>
+                      </div>
+                      <div class="wave-group">
+                        <input required="" type="text" class="input-tecido">
+                        <label class="label">
+                          <span class="label-char" style="--index: 0">L</span>
+                          <span class="label-char" style="--index: 1">o</span>
+                          <span class="label-char" style="--index: 2">g</span>
+                          <span class="label-char" style="--index: 3">i</span>
+                          <span class="label-char" style="--index: 5">n</span>
+                          <span class="label-char" style="--index: 6">&nbsp;</span>
+                          <span class="label-char" style="--index: 7">o</span>
+                          <span class="label-char" style="--index: 8">u</span>
+                          <span class="label-char" style="--index: 9">&nbsp;</span>
+                          <span class="label-char" style="--index: 10">E</span>
+                          <span class="label-char" style="--index: 11">m</span>
+                          <span class="label-char" style="--index: 12">a</span>
+                          <span class="label-char" style="--index: 13">i</span>
+                          <span class="label-char" style="--index: 14">l</span>
+                        </label>
+                      </div>
+                    </div>
+                    <span class="bar"></span>
+                  </div>
+                </ion-col>
+              </ion-row>
+
+              <ion-row class="espacamento">
+                <ion-col>
+                  <div class="input-barra">
+                    <div class="input-texto">
+                      <div class="icon-pessoa">
+                        <ion-buttons>
+                          <ion-button (click)="togglePasswordVisibility()">
+                            <ion-icon class="icon lock-icon" [name]="isPasswordVisible ? 'lock-open' : 'lock-closed'"></ion-icon>
+                          </ion-button>
+                        </ion-buttons>
+                      </div>
+                      <div class="wave-group">
+                        <input required="" [type]="isPasswordVisible ? 'text' : 'password'" class="input-tecido">
+                        <label class="label">
+                          <span class="label-char" style="--index: 0">S</span>
+                          <span class="label-char" style="--index: 1">e</span>
+                          <span class="label-char" style="--index: 2">n</span>
+                          <span class="label-char" style="--index: 3">h</span>
+                          <span class="label-char" style="--index: 5">a</span>
+                        </label>
+                      </div>
+                    </div>
+                    <span class="bar"></span>
+                  </div>
+                </ion-col>
+              </ion-row>
+
+              <ion-row>
+                <ion-col>
+                  <div class="div-btEntrar">
+                    <ion-button type="submit" class="btEntrar">Entrar</ion-button>
+                  </div>
+                </ion-col>
+              </ion-row>
+
+              <ion-row>
+                <ion-col>
+                 <div class="esqueci-senha">
+                   <span> Esqueceu sua senha? <a class="tagA" (click)="esqueciSenha()">Clique aqui</a></span>
+                 </div>
+                </ion-col>
+              </ion-row>
+            
+            </ion-grid>
+              </form>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
 
 </ion-content>
