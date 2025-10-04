@@ -5,6 +5,7 @@ import { Geolocation } from '@capacitor/geolocation';
 
 declare var google: any;
 
+// A interface Hospital reflete o dado bruto que pode vir do backend
 export interface Hospital {
   id: number;
   nome: string;
@@ -15,13 +16,18 @@ export interface Hospital {
   lati: number;
   longi: number;
   tempo_espera: number;
+  // Permite receber o objeto Buffer ou a string Base64 já convertida (caso venha direto)
+  foto: { type: 'Buffer', data: number[] } | string | null; 
 }
 
+// A interface HospitalProcessado define a foto como a string Base64 final para exibição
 export interface HospitalProcessado extends Hospital {
   distancia?: number;
   tempoDeslocamento?: number;
   distanciaRota?: number;
   enderecoCompleto?: string;
+  // A foto aqui é sempre a string Base64 ou null (para exibição)
+  foto: string | null; 
 }
 
 export interface LocalizacaoUsuario {
@@ -81,9 +87,39 @@ export class HospitalService {
   getHospitaisProcessados(): HospitalProcessado[] {
     return this.hospitaisFiltradosSource.value;
   }
+  
+  /**
+   * Converte um objeto Buffer do backend para uma string Base64 para exibição.
+   * Assume que o tipo de imagem é 'image/jpeg'.
+   * @param rawData O campo foto bruto do hospital.
+   * @returns String Base64 formatada ou null.
+   */
+  private converterBufferParaBase64(rawData: { type: 'Buffer', data: number[] } | string | null): string | null {
+    if (rawData && typeof rawData === 'object' && rawData.type === 'Buffer' && Array.isArray(rawData.data)) {
+      try {
+        // Cria um Buffer a partir do array de números (bytes)
+        const buffer = new Uint8Array(rawData.data);
+        
+        // Converte o Buffer em uma string Base64
+        let binary = '';
+        buffer.forEach(byte => binary += String.fromCharCode(byte));
+        const base64String = btoa(binary);
 
-  // Método para obter hospitais básicos (sem processamento)
-  async getTodosHospitais(): Promise<Hospital[]> {
+        // Retorna a string Base64 com o prefixo do tipo MIME
+        return `data:image/jpeg;base64,${base64String}`;
+      } catch (e) {
+        console.error('Erro na conversão para Base64:', e);
+        return null;
+      }
+    }
+    // Retorna a string existente (se já for Base64 ou URL) ou null
+    return typeof rawData === 'string' ? rawData : null;
+  }
+
+  /**
+   * Método para obter hospitais básicos, aplicando a conversão da foto.
+   */
+  async getTodosHospitais(): Promise<HospitalProcessado[]> {
     try {
       const todosHospitais = await this.requisicaoService.get(
         '/hospital',
@@ -97,12 +133,15 @@ export class HospitalService {
         cidade: hospital.cidade,
         logradouro: hospital.logradouro,
         bairro: hospital.bairro,
-        lati: parseFloat(hospital.lati as any),
+        // Garante que lati e longi são do tipo number
+        lati: parseFloat(hospital.lati as any), 
         longi: parseFloat(hospital.longi as any),
-   
-      
-        tempo_espera: hospital.tempo_espera
-      }));
+        
+        // Aplica a conversão para Base64
+        foto: this.converterBufferParaBase64(hospital.foto), 
+        tempo_espera: hospital.tempo_espera,
+        qtd_pacientes: hospital.qtd_pacientes // Adicionei qtd_pacientes aqui, já que está sendo usado abaixo
+      } as HospitalProcessado));
     } catch (error) {
       console.error('Erro ao buscar hospitais:', error);
       return [];
@@ -112,21 +151,21 @@ export class HospitalService {
   // ================== MÉTODOS PRINCIPAIS ================== //
 
   async inicializarComConfiguracoesSalvas(): Promise<LocalizacaoUsuario> {
-  try {
-    const config = await this.obterConfiguracoesLocalStorage();
+    try {
+      const config = await this.obterConfiguracoesLocalStorage();
 
-    if (config.LocalizacaoAtual === 'true') {
-      return await this.inicializarComLocalizacaoAtual();
-    } else if (config.EnderecoManual) { 
-      return await this.inicializarComEndereco(config.EnderecoManual);
-    } else {
-      throw new Error('Nenhuma configuração de localização válida encontrada');
+      if (config.LocalizacaoAtual === 'true') {
+        return await this.inicializarComLocalizacaoAtual();
+      } else if (config.EnderecoManual) { 
+        return await this.inicializarComEndereco(config.EnderecoManual);
+      } else {
+        throw new Error('Nenhuma configuração de localização válida encontrada');
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar com configurações salvas:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('Erro ao inicializar com configurações salvas:', error);
-    throw error;
   }
-}
 
   // Este é o método que deve ser chamado para carregar todos os dados.
   // Ele agora orquestra a localização e o carregamento dos hospitais.
@@ -196,13 +235,16 @@ export class HospitalService {
 
   private async verificarPermissoes(): Promise<void> {
     try {
-      const permissionStatus = await Geolocation.checkPermissions();
+      // Capacitor.checkPermissions() só existe se a plataforma suportar
+      if (typeof Geolocation.checkPermissions === 'function') {
+        const permissionStatus = await Geolocation.checkPermissions();
 
-      if (permissionStatus.location !== 'granted') {
-        const requestStatus = await Geolocation.requestPermissions();
+        if (permissionStatus.location !== 'granted') {
+          const requestStatus = await Geolocation.requestPermissions();
 
-        if (requestStatus.location !== 'granted') {
-          throw new Error('Permissão de localização negada pelo usuário');
+          if (requestStatus.location !== 'granted') {
+            throw new Error('Permissão de localização negada pelo usuário');
+          }
         }
       }
     } catch (error) {
@@ -225,7 +267,7 @@ export class HospitalService {
       case 'TIMEOUT':
         return 'Tempo esgotado para obter localização. Tente novamente.';
       default:
-        return 'Erro ao obter localização. Trente novamente.';
+        return 'Erro ao obter localização. Tente novamente.';
     }
   }
 
@@ -275,22 +317,11 @@ export class HospitalService {
     }
     
     try {
-      const todosHospitais = await this.requisicaoService.get('/hospital', {}).toPromise() as any[];
+      // 1. Obtém todos os hospitais (agora com a conversão de foto e mapeamento de tipos resolvidos)
+      const todosHospitais: HospitalProcessado[] = await this.getTodosHospitais();
 
-      const hospitaisMapeados: Hospital[] = todosHospitais.map(hospital => ({
-        id: hospital.id,
-        nome: hospital.nome,
-        uf: hospital.uf,
-        cidade: hospital.cidade,
-        logradouro: hospital.logradouro,
-        bairro: hospital.bairro,
-        lati: parseFloat(hospital.lati as any),
-        longi: parseFloat(hospital.longi as any),
-        qtd_pacientes: hospital.qtd_pacientes,
-        tempo_espera: hospital.tempo_espera
-      }));
-
-      const hospitaisComDistanciaInicial = hospitaisMapeados.map(hospital => {
+      // 2. Calcula a distância em linha reta (Haversine)
+      const hospitaisComDistanciaInicial = todosHospitais.map(hospital => {
         const distancia = this.calcularDistancia(
           localizacao.lat, localizacao.lng,
           hospital.lati, hospital.longi
@@ -299,7 +330,12 @@ export class HospitalService {
           ...hospital,
           distancia,
         } as HospitalProcessado;
-      }).filter(hospital => (hospital.distancia ?? Infinity) <= raioKm * 1.2);
+      })
+      // Filtra com uma margem (20%) para garantir que hospitais próximos por estrada não sejam perdidos
+      .filter(hospital => (hospital.distancia ?? Infinity) <= raioKm * 1.2); 
+
+      // 3. Calcula rotas e tempos (apenas para os 10 mais próximos em linha reta)
+      hospitaisComDistanciaInicial.sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity));
 
       const hospitaisParaCalcularRota = hospitaisComDistanciaInicial.slice(0, 10);
       const hospitaisComRota = await this.calcularRotasETempos(
@@ -308,23 +344,29 @@ export class HospitalService {
         localizacao.lng
       );
 
+      // 4. Combina resultados e define a distância final para filtragem
+      const hospitaisRestantes = hospitaisComDistanciaInicial.slice(10).map(h => ({ 
+        ...h, 
+        tempoDeslocamento: undefined, // Limpa os campos de rota para os que não foram calculados
+        distanciaRota: undefined 
+      }));
+
       const todosHospitaisProcessados = [
         ...hospitaisComRota,
-        ...hospitaisComDistanciaInicial.slice(10).map(h => ({ 
-          ...h, 
-          tempoDeslocamento: undefined, 
-          distanciaRota: undefined 
-        }))
+        ...hospitaisRestantes
       ];
 
+      // 5. Filtra pelo raio final (usando a rota se disponível, ou a distância Haversine)
       const hospitaisFinais = todosHospitaisProcessados.filter(h => {
         const distanciaFinal = h.distanciaRota ?? h.distancia;
         return (distanciaFinal ?? Infinity) <= raioKm;
       });
 
+      // 6. Ordena por Distância (Rota ou Haversine) e desempata por tempo de espera
       hospitaisFinais.sort((a, b) => {
-        const distA = a.distancia ?? Infinity;
-        const distB = b.distancia ?? Infinity;
+        const distA = a.distanciaRota ?? a.distancia ?? Infinity;
+        const distB = b.distanciaRota ?? b.distancia ?? Infinity;
+        
         if (distA !== distB) {
           return distA - distB;
         }
@@ -341,7 +383,7 @@ export class HospitalService {
 
   // ================== MÉTODOS AUXILIARES ================== //
 
-  private formatarEndereco(hospital: Hospital): string {
+  private formatarEndereco(hospital: HospitalProcessado): string {
     const parts = [hospital.logradouro, hospital.bairro, hospital.cidade, hospital.uf];
     return parts.filter(part => part && part.trim()).join(', ');
   }
@@ -378,22 +420,31 @@ export class HospitalService {
             unitSystem: google.maps.UnitSystem.METRIC,
             region: 'BR'
           }, (result: any, status: string) => {
-            status === 'OK' ? resolve(result) : reject(status);
+            // A API do Maps retorna status na string. Usamos ngZone.run() para garantir que 
+            // a promessa se resolva no contexto do Angular, embora não seja estritamente 
+            // necessário aqui devido ao uso de Promise.
+            this.ngZone.run(() => {
+                status === 'OK' ? resolve(result) : reject(status);
+            });
           });
         });
 
         const rota = result.routes[0].legs[0];
         return {
           ...hospital,
-          tempoDeslocamento: Math.ceil(rota.duration.value / 60),
-          distanciaRota: rota.distance.value / 1000
+          // Tempo em minutos
+          tempoDeslocamento: Math.ceil(rota.duration.value / 60), 
+          // Distância em km
+          distanciaRota: rota.distance.value / 1000 
         };
       } catch (error) {
-        console.warn(`Erro ao calcular rota para ${hospital.nome}:`, error);
-        return hospital;
+        console.warn(`Erro ao calcular rota para ${hospital.nome}. Status:`, error);
+        // Em caso de erro, retorna o hospital sem os dados de rota.
+        return hospital; 
       }
     });
 
+    // Usamos Promise.all para executar as requisições de rota em paralelo
     return Promise.all(promises);
   }
 
@@ -409,6 +460,9 @@ export class HospitalService {
   }
 
   async atualizarRaio(raioKm: number): Promise<void> {
+    // É importante salvar a nova configuração de raio aqui
+    this.setRaioConfigurado(raioKm); 
+    
     const localizacao = this.localizacaoUsuarioSource.value;
     if (localizacao) {
       await this.carregarHospitaisProximos(raioKm);
@@ -420,7 +474,7 @@ export class HospitalService {
       const configStr = localStorage.getItem('configuracoesUsuario');
       if (configStr) {
         const config = JSON.parse(configStr);
-        return !!(config.Distancia && (config.EnderecoManual !== undefined && config.LocalizacaoAtual !== undefined));
+        return !!(config.Distancia && (config.EnderecoManual !== undefined || config.LocalizacaoAtual === 'true'));
       }
       return false;
     } catch (error) {

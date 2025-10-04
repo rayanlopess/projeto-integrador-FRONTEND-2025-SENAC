@@ -67,7 +67,8 @@ export class HomePage implements OnInit, OnDestroy {
   public erroCarregamento: boolean = false;
   public mensagemErro: string = '';
   public data: string = this.dateService.getFormattedDate();
-
+public hospitalPhoto: string | null = null; // Base64 da foto
+    public hospitalPhotoFilename: string = 'foto_hospital.jpeg'; // Nome do arquivo para o backend
   private subscription!: Subscription;
 
   isRefreshing = false;
@@ -129,6 +130,7 @@ export class HomePage implements OnInit, OnDestroy {
       this.subscription = this.hospitalService.hospitaisFiltrados$.subscribe({
         next: (hospitais) => {
           this.hospitais = hospitais;
+          console.log(hospitais)
           this.carregando = false;
           console.log('Hospitais carregados:', this.hospitais);
         },

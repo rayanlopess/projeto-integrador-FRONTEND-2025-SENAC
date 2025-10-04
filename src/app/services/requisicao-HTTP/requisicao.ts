@@ -6,7 +6,7 @@ import { Injectable } from '@angular/core';
 })
 export class RequiemDosDeusesService {
 
-  private baseUrl = 'http://localhost:3000'; // Adicione http://
+  private baseUrl = 'https://projeto-integrador-backend-2025-senac.onrender.com'; // Adicione http://
 
   constructor(public http: HttpClient) { }
 

@@ -73,7 +73,7 @@
             <ion-list>
               <ion-item>
                 <ion-thumbnail slot="end">
-                  <img alt="Hospital" src="../../../assets/icons/filamed-icon-azul.png" />
+                  <img [src]="hospital.foto ?? 'assets/imgs/default-hospital.png'" alt="Foto do Hospital {{ hospital.nome }}" />
                 </ion-thumbnail>
                 <div class="informacoes-div">
                   <h1>{{hospital.nome}} - {{getDistanciaDisplay(hospital)}}</h1>
