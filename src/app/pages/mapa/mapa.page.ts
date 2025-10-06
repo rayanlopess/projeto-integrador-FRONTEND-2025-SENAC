@@ -143,7 +143,7 @@ export class MapaPage implements OnInit, OnDestroy {
 
       // NOVO: Adicione um atraso extra e final para garantir que o layout Ionic esteja concluído.
       // 500ms é um valor seguro para acomodar a renderização nativa.
-      await new Promise(resolve => setTimeout(resolve, 500)); 
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       let localizacaoUsuario: LocalizacaoUsuario | null = null;
       // ... (Restante da lógica de busca de localização)
@@ -179,11 +179,11 @@ export class MapaPage implements OnInit, OnDestroy {
       this.isLoading.set(false);
       this.presentAlert('Erro de Localização', error.message || 'Não foi possível carregar o mapa. Por favor, verifique suas configurações de localização.');
     }
-}
+  }
 
-async ionViewWillLeave() {
-  await this.destroyMap();
-}
+  async ionViewWillLeave() {
+    await this.destroyMap();
+  }
 
 
   async presentAlert(header: string, message: string) {
@@ -234,7 +234,6 @@ async ionViewWillLeave() {
           streetViewControl: false,
           rotateControl: false,
           fullscreenControl: false,
-
           mapId: this.currentTheme === 'dark' ? "6fbe87b38800cc70488f7956" : "6fbe87b38800cc70bd62cb93",
         },
       });
@@ -255,7 +254,7 @@ async ionViewWillLeave() {
       }
       // Valor padrão seguro (56px é o padrão do Ionic) caso não encontre o elemento
       await this.newMap.setPadding({
-        top: toolbarHeight, 
+        top: toolbarHeight,
         bottom: 0,
         left: 0,
         right: 0
@@ -481,23 +480,23 @@ async ionViewWillLeave() {
   }
 
   async destroyMap() {
-      if (this.newMap) {
-            try {
-              // Limpar markers e circles ANTES de destruir o mapa
-              await this.clearHospitalMarkers(); 
-              if (this.circleId) {
-                await this.newMap.removeCircles([this.circleId]);
-                this.circleId = undefined;
-              }
-              
-              // A CHAVE: Destruir o recurso nativo
-              await this.newMap.destroy(); 
-              this.newMap = undefined;
-              this.isMapInitialized = false; // Resetar o flag
-            } catch (error) {
-              console.error('Error destroying map:', error);
-            }
-          }
+    if (this.newMap) {
+      try {
+        // Limpar markers e circles ANTES de destruir o mapa
+        await this.clearHospitalMarkers();
+        if (this.circleId) {
+          await this.newMap.removeCircles([this.circleId]);
+          this.circleId = undefined;
+        }
+
+        // A CHAVE: Destruir o recurso nativo
+        await this.newMap.destroy();
+        this.newMap = undefined;
+        this.isMapInitialized = false; // Resetar o flag
+      } catch (error) {
+        console.error('Error destroying map:', error);
+      }
+    }
   }
 
   async retryLoadMap() {
