@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, AfterViewInit, ViewChild, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, ViewChild, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -16,19 +16,23 @@ import {
 
 import { addIcons } from 'ionicons';
 import { home, map, call, settings, personCircle, invertMode, medical, locate } from 'ionicons/icons';
-import { GoogleMap } from '@capacitor/google-maps';
+// import { GoogleMap } from '@capacitor/google-maps'; // REMOVIDO: Usaremos a API JS
 
 import { SimplePopoverComponent } from '../../components/simple-popover/simple-popover.component';
 import { AlertController, PopoverController } from '@ionic/angular/standalone';
 import { ThemeService, ThemeMode } from '../../services/theme/theme';
 import { HospitalService, Hospital, HospitalProcessado, LocalizacaoUsuario } from '../../services/sistema-hospital/hospital';
 
-import { point } from '@turf/helpers';
-import { circle } from '@turf/circle';
-
 import { Subscription } from 'rxjs';
 
-const apiKey = "AIzaSyDvQ8YamcGrMBGAp0cslVWSRhS5NXNEDcI";
+// **IMPORTANTE:** O Google Maps JavaScript API não usa a chave "apiKey" dessa forma.
+// A chave deve ser carregada no <head> do index.html.
+// No entanto, para fins de manter a estrutura de inicialização, vamos usá-la.
+// const apiKey = "AIzaSyDvQ8YamcGrMBGAp0cslVWSRhS5NXNEDcI"; // Chave será usada na função loadGoogleMaps
+
+// **IMPORTANTE:** Adicione este 'declare' para o TypeScript reconhecer as classes do Google Maps JS
+// Elas se tornam disponíveis após o carregamento do script do Google Maps no index.html.
+declare const google: any;
 
 @Component({
   selector: 'app-mapa',
@@ -52,20 +56,26 @@ const apiKey = "AIzaSyDvQ8YamcGrMBGAp0cslVWSRhS5NXNEDcI";
 export class MapaPage implements OnInit, OnDestroy {
   @ViewChild('map')
   mapRef!: ElementRef<HTMLElement>;
-  newMap?: GoogleMap;
+  // NEW: Usaremos 'google.maps.Map'
+  newMap?: google.maps.Map; 
   userLocation?: { lat: number; lng: number };
   private themeSubscription?: Subscription;
   private raioSubscription?: Subscription;
-  private hospitaisSubscription?: Subscription; // Adicione esta linha
+  private hospitaisSubscription?: Subscription;
   currentTheme: 'light' | 'dark' = 'light';
   private isMapInitialized = false;
-  private hospitalMarkers: string[] = [];
-  private circleId?: string;
+  
+  // NEW: Usaremos 'google.maps.Marker[]'
+  private hospitalMarkers: google.maps.Marker[] = [];
+  // NEW: Usaremos 'google.maps.Marker' para o marcador do usuário
+  private userMarker?: google.maps.Marker; 
+  // NEW: Usaremos 'google.maps.Circle'
+  private circleInstance?: google.maps.Circle; 
+  
   private raioKm: number = 10;
   private enderecoManual: string = JSON.parse(localStorage.getItem('configuracoesUsuario') || '{}').EnderecoManual || '';
   private localizacaoAtual: string = JSON.parse(localStorage.getItem('configuracoesUsuario') || '{}').LocalizacaoAtual || '';
 
-  // Adicione uma propriedade para armazenar os hospitais filtrados
   private hospitaisFiltrados: HospitalProcessado[] = [];
 
   isLoading = signal(true);
@@ -83,31 +93,32 @@ export class MapaPage implements OnInit, OnDestroy {
   ngOnInit() {
     this.currentTheme = this.themeService.getCurrentTheme();
 
-
     this.themeSubscription = this.themeService.themeChanged$.subscribe((mode: ThemeMode) => {
       const newTheme = this.themeService.getCurrentTheme();
       if (newTheme !== this.currentTheme && this.isMapInitialized) {
         this.currentTheme = newTheme;
-        this.recreateMapWithNewTheme();
+        // **ALTERAÇÃO:** RecreateMapWithNewTheme agora só precisa atualizar o estilo
+        this.updateMapStyle(newTheme); 
       } else {
         this.currentTheme = newTheme;
       }
     });
 
     this.raioSubscription = this.hospitalService.raioChanged$.subscribe((novoRaio: number) => {
-      // Apenas atualiza o valor e, se o mapa estiver pronto, atualiza o mapa
       this.raioKm = novoRaio;
       if (this.isMapInitialized) {
-        this.atualizarMapaComNovoRaio();
+        // **ALTERAÇÃO:** Atualiza o raio e a câmera sem recriar o mapa inteiro
+        this.atualizarMapaComNovoRaio(); 
       }
     });
 
-    // Adicione a inscrição para a lista de hospitais filtrados
     this.hospitaisSubscription = this.hospitalService.hospitaisFiltrados$.subscribe(hospitais => {
       this.hospitaisFiltrados = hospitais;
       if (this.isMapInitialized) {
         this.addHospitalMarkers(this.hospitaisFiltrados);
-        this.addRadiusCircle();
+        // O círculo será adicionado ou atualizado em 'atualizarMapaComNovoRaio' ou 'ionViewDidEnter'
+        // Chamada aqui para garantir que os hospitais recém-filtrados sejam exibidos
+        this.addRadiusCircle(); 
       }
     });
   }
@@ -122,7 +133,9 @@ export class MapaPage implements OnInit, OnDestroy {
     if (this.hospitaisSubscription) {
       this.hospitaisSubscription.unsubscribe();
     }
-    this.destroyMap();
+    // **ALTERAÇÃO:** Não há método 'destroy()' na API JS, mas limpamos as referências
+    this.newMap = undefined; 
+    this.isMapInitialized = false;
   }
 
   async presentPopover(event: Event) {
@@ -134,19 +147,14 @@ export class MapaPage implements OnInit, OnDestroy {
   }
 
   async ionViewDidEnter() {
-    // Se o mapa já foi inicializado, ignore.
     if (this.isMapInitialized) return;
 
-    // --- LÓGICA DE INICIALIZAÇÃO MOVIDA PARA CÁ ---
     try {
       this.isLoading.set(true);
-
-      // NOVO: Adicione um atraso extra e final para garantir que o layout Ionic esteja concluído.
-      // 500ms é um valor seguro para acomodar a renderização nativa.
       await new Promise(resolve => setTimeout(resolve, 500));
 
       let localizacaoUsuario: LocalizacaoUsuario | null = null;
-      // ... (Restante da lógica de busca de localização)
+
       try {
         localizacaoUsuario = await this.hospitalService.inicializarComConfiguracoesSalvas();
       } catch (error) {
@@ -162,16 +170,17 @@ export class MapaPage implements OnInit, OnDestroy {
       } else {
         throw new Error('Não foi possível obter a localização do usuário.');
       }
-      // --- FIM DA LÓGICA DE BUSCA ---
 
-      await this.createMap(); // Onde o mapa é de fato criado
+      await this.loadGoogleMapsScript(); // Certifica-se de que a API JS está carregada
+      await this.createMap();
 
       this.isMapInitialized = true;
       this.isLoading.set(false);
 
       this.raioKm = this.hospitalService.getRaioConfigurado();
-      this.addHospitalMarkers(this.hospitaisFiltrados);
-      this.addRadiusCircle();
+      await this.addUserMarker();
+      await this.addHospitalMarkers(this.hospitaisFiltrados);
+      await this.addRadiusCircle();
 
     } catch (error: any) {
       console.error('Erro durante inicialização do mapa:', error);
@@ -182,9 +191,32 @@ export class MapaPage implements OnInit, OnDestroy {
   }
 
   async ionViewWillLeave() {
-    await this.destroyMap();
+    // Na API JS, não precisamos de 'destroyMap' ao sair, pois o mapa
+    // não está em uma camada nativa. Apenas limpamos marcadores e referências.
+    this.clearMapObjects(); 
   }
 
+  // Novo método para carregar o script do Google Maps JS
+  private loadGoogleMapsScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (typeof google !== 'undefined' && google.maps) {
+        resolve();
+        return;
+      }
+      
+      const script = document.createElement('script');
+      // **IMPORTANTE:** Substitua 'YOUR_API_KEY' pela sua chave real, ou a constante 'apiKey'
+      // O Capacitor Google Maps usa uma chave no código, mas a API JS espera uma URL.
+      // Vou usar a constante de exemplo que você forneceu.
+      const apiKey = "AIzaSyDvQ8YamcGrMBGAp0cslVWSRhS5NXNEDcI"; 
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = (error) => reject(new Error('Falha ao carregar o script do Google Maps JS.'));
+      document.head.appendChild(script);
+    });
+  }
 
   async presentAlert(header: string, message: string) {
     const alert = await this.alertController.create({
@@ -208,76 +240,49 @@ export class MapaPage implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.localizacaoAtual === "false" && this.enderecoManual === "false") {
-      console.error('User location not defined before map creation.');
-      this.loadError.set(true);
-      return;
-    }
+    const zoomLevel = this.calculateZoomLevel(this.raioKm);
+    
+    // **ALTERAÇÃO:** Criação do mapa usando 'google.maps.Map'
+    this.newMap = new google.maps.Map(this.mapRef.nativeElement, {
+      center: this.userLocation,
+      zoom: zoomLevel,
+      disableDefaultUI: true,
+      zoomControl: false,
+      mapTypeControl: false,
+      scaleControl: false,
+      streetViewControl: false,
+      rotateControl: false,
+      fullscreenControl: false,
+      // **ALTERAÇÃO:** O mapId agora é usado para um mapa estilizado (não tema dinâmico com cores)
+      // O estilo de tema é manipulado via 'styles' ou ID, mas aqui usamos o Map ID padrão se estiver definido.
+      mapId: this.currentTheme === 'dark' ? "6fbe87b38800cc70488f7956" : "6fbe87b38800cc70bd62cb93",
+    });
 
-    try {
-      await this.destroyMap();
+    // **ALTERAÇÃO:** Configura o Listener para o clique no marcador
+    this.newMap?.addListener('click', (event: any) => {
+        // Se precisar de um listener para o mapa inteiro.
+    });
+    
+    // Se o mapa for recriado, os listeners dos marcadores serão configurados em 'addHospitalMarkers'
 
-      const zoomLevel = this.calculateZoomLevel(this.raioKm);
-
-      this.newMap = await GoogleMap.create({
-        id: 'my-map',
-        element: this.mapRef.nativeElement,
-        apiKey: apiKey,
-
-        config: {
-          center: this.userLocation,
-          zoom: zoomLevel,
-          disableDefaultUI: true,
-          zoomControl: false,
-          mapTypeControl: false,
-          scaleControl: false,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: false,
-          mapId: this.currentTheme === 'dark' ? "6fbe87b38800cc70488f7956" : "6fbe87b38800cc70bd62cb93",
-        },
-      });
-
-      await this.newMap.setOnMarkerClickListener(async (event) => {
-        await this.showHospitalInfo(event.markerId);
-      });
-
-      // ----------------------------------------------------
-      // SOLUÇÃO CRÍTICA (CORRIGIDA): USANDO setPadding
-      // ----------------------------------------------------
-
-      // 1. Tenta obter a altura real da barra de ferramentas (toolbar)
-      const toolbarElement = document.querySelector('ion-toolbar');
-      let toolbarHeight = 0;
-      if (toolbarElement) {
-        toolbarHeight = toolbarElement.offsetHeight;
-      }
-      // Valor padrão seguro (56px é o padrão do Ionic) caso não encontre o elemento
-      await this.newMap.setPadding({
-        top: toolbarHeight,
-        bottom: 0,
-        left: 0,
-        right: 0
-      });
-
-      // NOVO PASSO: Força uma atualização da câmera e re-renderização
-      await this.newMap.setCamera({
-        coordinate: this.userLocation, // Usa a localização já obtida
-        zoom: zoomLevel // Usa o nível de zoom já calculado
-      });
-
-      // ----------------------------------------------------
-
-      await this.addUserMarker();
-
-    } catch (error) {
-      console.error('Error creating map:', error);
-      throw error;
-    }
+    // **REMOVIDO:** setPadding() não é necessário na API JS. O Ionic lida com o layout HTML.
+    // **REMOVIDO:** Forçar setCamera() também não é necessário, pois já foi feito na criação.
   }
 
+  private updateMapStyle(theme: 'light' | 'dark') {
+      if (!this.newMap) return;
+      
+      const mapId = theme === 'dark' ? "6fbe87b38800cc70488f7956" : "6fbe87b38800cc70bd62cb93";
+
+      // **ALTERAÇÃO:** Atualiza o estilo usando 'mapId'
+      this.newMap.setOptions({ mapId: mapId }); 
+      console.log(`Estilo do mapa atualizado para o tema: ${theme}`);
+  }
+
+
   private calculateZoomLevel(radiusKm: number): number {
-    if (radiusKm <= 10) return 11.3;
+    // A lógica de cálculo do zoom pode ser mantida, mas também podemos usar fitBounds
+    if (radiusKm <= 10) return 12;
     if (radiusKm <= 20) return 10.3;
     if (radiusKm <= 30) return 9.7;
     if (radiusKm <= 40) return 9.3;
@@ -292,38 +297,59 @@ export class MapaPage implements OnInit, OnDestroy {
 
   async addUserMarker() {
     if (!this.newMap || !this.userLocation) return;
-    try {
-      await this.newMap.addMarker({
-        coordinate: this.userLocation,
-        title: 'Sua localização',
-        snippet: 'Você está aqui!',
-        iconUrl: '../../../assets/icons/snippet-user.png',
-        iconSize: { width: 40, height: 40 }
-      });
-    } catch (error) {
-      console.error('Error adding user marker:', error);
+    
+    // **ALTERAÇÃO:** Remove o marcador de usuário antigo
+    if (this.userMarker) {
+        this.userMarker.setMap(null);
     }
+    
+    // **ALTERAÇÃO:** Criação do marcador usando 'google.maps.Marker'
+    this.userMarker = new google.maps.Marker({
+      position: this.userLocation,
+      map: this.newMap,
+      title: 'Sua localização',
+      icon: {
+        url: '../../../assets/icons/snippet-user.png',
+        scaledSize: new google.maps.Size(40, 40)
+      }
+    });
+
+    // **ALTERAÇÃO:** Adiciona listener para o marcador do usuário (opcional)
+    this.userMarker?.addListener('click', () => {
+        this.newMap!.setCenter(this.userLocation!);
+    });
+
+    // **REMOVIDO:** A API JS não usa 'snippet' diretamente, mas podemos usar InfoWindow se necessário.
   }
 
-  // Refatorado para receber a lista de hospitais como parâmetro
   async addHospitalMarkers(hospitais: (Hospital | HospitalProcessado)[]) {
     if (!this.newMap) return;
     try {
-      await this.clearHospitalMarkers();
+      await this.clearHospitalMarkers(); // Limpa marcadores antigos
 
       for (const hospital of hospitais) {
         try {
-          const markerId = await this.newMap.addMarker({
-            coordinate: {
+          // **ALTERAÇÃO:** Criação do marcador usando 'google.maps.Marker'
+          const marker = new google.maps.Marker({
+            position: {
               lat: hospital.lati,
               lng: hospital.longi
             },
+            map: this.newMap,
             title: hospital.nome,
-            snippet: this.createHospitalSnippet(hospital),
-            iconUrl: '../../../assets/icons/snippet-hospital.png',
-            iconSize: { width: 40, height: 40 }
+            icon: {
+                url: '../../../assets/icons/snippet-hospital.png',
+                scaledSize: new google.maps.Size(40, 40)
+            }
           });
-          this.hospitalMarkers.push(markerId);
+          
+          // **ALTERAÇÃO:** Adiciona o Listener de clique
+          marker.addListener('click', () => {
+             // O HospitalService deve ter uma maneira de buscar o hospital pelo nome/coordenada
+             this.showHospitalInfo(marker.getTitle()!); 
+          });
+
+          this.hospitalMarkers.push(marker);
         } catch (error) {
           console.error(`Erro ao adicionar marcador para ${hospital.nome}:`, error);
         }
@@ -340,44 +366,58 @@ export class MapaPage implements OnInit, OnDestroy {
       return;
     }
     console.log('Valor de raioKm:', this.raioKm);
-
-
+    
+    // **ALTERAÇÃO:** Remove o círculo antigo
+    if (this.circleInstance) {
+        this.circleInstance.setMap(null);
+    }
 
     try {
-
-
-      const centerPoint = point([this.userLocation.lng, this.userLocation.lat]);
-
-      // Usamos 'as any' para contornar o erro de tipagem.
-      // Isso informa ao TypeScript para não verificar os tipos neste objeto.
-      const options = { steps: 64, units: 'kilometers' } as any;
-      const circlePolygon = circle(centerPoint, this.raioKm, options);
-
-      console.log(`Desenhando círculo com raio de ${this.raioKm}km`);
-
-      const polygonIds = await this.newMap.addPolygons([{
-        paths: circlePolygon.geometry.coordinates[0].map(coord => ({
-          lat: coord[1],
-          lng: coord[0]
-        })),
-        strokeColor: '#3880ff',
+      // **ALTERAÇÃO:** Criação do círculo usando 'google.maps.Circle'
+      this.circleInstance = new google.maps.Circle({
+        strokeColor: '#fff',
         strokeOpacity: 0.8,
         strokeWeight: 2,
-        fillColor: '#3880ff',
-        fillOpacity: 0.2
-      }]);
+        fillColor: '#fff',
+        fillOpacity: 0.2,
+        map: this.newMap,
+        center: this.userLocation,
+        // Raio é em metros, então convertemos km para metros (* 1000)
+        radius: this.raioKm * 1000
+      });
 
-      this.circleId = polygonIds[0];
+      // **ALTERAÇÃO:** Ajusta o zoom do mapa para incluir o círculo
+      const center = new google.maps.LatLng(this.userLocation.lat, this.userLocation.lng);
+      const radiusInMeters = this.raioKm * 500;
+      const bounds = this.getBounds(center, radiusInMeters);
+      this.newMap.fitBounds(bounds);
+      
     } catch (error) {
       console.error('Erro ao adicionar círculo do raio:', error);
     }
   }
+  
+  // Novo método para calcular os limites (bounds) de um círculo (necessário para 'fitBounds')
+  private getBounds(center: any, radiusInMeters: number): any {
+    const bounds = new google.maps.LatLngBounds();
+    // A fórmula para estimar o ponto a 90 graus (Norte, Leste, Sul, Oeste)
+    const distance = radiusInMeters; 
+    
+    // Northeast (0 degrees - East)
+    const northEast = google.maps.geometry.spherical.computeOffset(center, distance, 45); 
+    const southWest = google.maps.geometry.spherical.computeOffset(center, distance, 225); 
+
+    bounds.extend(northEast);
+    bounds.extend(southWest);
+
+    return bounds;
+  }
 
 
-
-  async showHospitalInfo(markerId: string) {
+  async showHospitalInfo(markerTitle: string) {
     try {
-      const hospital = await this.findHospitalByMarkerId(markerId);
+      // **ALTERAÇÃO:** Busca o hospital pelo título (que é o nome)
+      const hospital = this.hospitaisFiltrados.find(h => h.nome === markerTitle);
       if (!hospital) return;
 
       const alert = await this.alertController.create({
@@ -397,7 +437,7 @@ export class MapaPage implements OnInit, OnDestroy {
             role: 'confirm',
             cssClass: 'confirmarAction',
             handler: async () => {
-
+                // Lógica de navegação
             },
           },
         ],
@@ -407,17 +447,11 @@ export class MapaPage implements OnInit, OnDestroy {
       console.error('Erro ao mostrar informações do hospital:', error);
     }
   }
-
-  private async findHospitalByMarkerId(markerId: string): Promise<Hospital | HospitalProcessado | null> {
-    // Agora busca na lista filtrada, que está em this.hospitaisFiltrados
-    const markerIndex = this.hospitalMarkers.indexOf(markerId);
-    if (markerIndex !== -1 && markerIndex < this.hospitaisFiltrados.length) {
-      return this.hospitaisFiltrados[markerIndex];
-    }
-    return null;
-  }
+  
+  // O findHospitalByMarkerId não é mais necessário, pois o Listener passa o título do marcador
 
   private createHospitalSnippet(hospital: Hospital | HospitalProcessado): string {
+    // ... (mantido inalterado)
     let snippet = '';
     snippet += `Cidade: ${hospital.cidade} - ${hospital.uf}\n`;
     snippet += `Bairro: ${hospital.bairro}\n`;
@@ -436,28 +470,30 @@ export class MapaPage implements OnInit, OnDestroy {
   async clearHospitalMarkers() {
     if (!this.newMap || this.hospitalMarkers.length === 0) return;
     try {
-      await this.newMap.removeMarkers(this.hospitalMarkers);
+      // **ALTERAÇÃO:** Limpa os marcadores usando setMap(null)
+      this.hospitalMarkers.forEach(marker => marker.setMap(null));
       this.hospitalMarkers = [];
     } catch (error) {
       console.error('Erro ao limpar marcadores:', error);
     }
   }
 
+  // **ALTERAÇÃO:** Não recria o mapa inteiro, apenas atualiza o zoom e o círculo
   async atualizarMapaComNovoRaio() {
     console.log('Atualizando mapa com novo raio:', this.raioKm);
     this.isLoading.set(true);
     try {
-      // Destrói o mapa atual antes de recriá-lo
-      await this.destroyMap();
+      if (!this.newMap) {
+        await this.createMap(); // Recria se não existir
+      }
 
-      // Recria o mapa com a nova configuração de zoom
-      await this.createMap();
+      // **ALTERAÇÃO:** Atualiza o círculo com o novo raio
+      await this.addRadiusCircle(); 
+      
+      // O addRadiusCircle já chama fitBounds, que lida com o zoom
+      
+      await this.addHospitalMarkers(this.hospitaisFiltrados); // Re-adiciona para garantir visibilidade
 
-      // Adiciona novamente os marcadores de hospital e o círculo com o novo raio
-      await this.addHospitalMarkers(this.hospitaisFiltrados);
-      await this.addRadiusCircle();
-
-      this.isMapInitialized = true;
       this.isLoading.set(false);
     } catch (error) {
       console.error('Erro ao atualizar mapa com novo raio:', error);
@@ -465,41 +501,42 @@ export class MapaPage implements OnInit, OnDestroy {
     }
   }
 
+  // **ALTERAÇÃO:** Não recria o mapa, apenas atualiza o estilo
   async recreateMapWithNewTheme() {
-    console.log('Recriando mapa com novo tema:', this.currentTheme);
+    console.log('Atualizando estilo do mapa para o novo tema:', this.currentTheme);
     this.isLoading.set(true);
     try {
-      await this.createMap();
-      await this.addHospitalMarkers(this.hospitaisFiltrados); // Adicionar await
-      await this.addRadiusCircle(); // Adicionar await
+      this.updateMapStyle(this.currentTheme);
       this.isLoading.set(false);
     } catch (error) {
-      console.error('Erro ao recriar mapa:', error);
+      console.error('Erro ao recriar mapa (apenas estilo):', error);
       this.isLoading.set(false);
     }
   }
 
-  async destroyMap() {
-    if (this.newMap) {
-      try {
-        // Limpar markers e circles ANTES de destruir o mapa
-        await this.clearHospitalMarkers();
-        if (this.circleId) {
-          await this.newMap.removeCircles([this.circleId]);
-          this.circleId = undefined;
-        }
-
-        // A CHAVE: Destruir o recurso nativo
-        await this.newMap.destroy();
-        this.newMap = undefined;
-        this.isMapInitialized = false; // Resetar o flag
-      } catch (error) {
-        console.error('Error destroying map:', error);
+  // Novo método para limpar todos os objetos do mapa
+  private clearMapObjects() {
+      this.clearHospitalMarkers();
+      if (this.circleInstance) {
+          this.circleInstance.setMap(null);
+          this.circleInstance = undefined;
       }
-    }
+      if (this.userMarker) {
+          this.userMarker.setMap(null);
+          this.userMarker = undefined;
+      }
+      this.newMap = undefined;
+      this.isMapInitialized = false;
+  }
+  
+  // **ALTERAÇÃO:** destroyMap() não é necessário na API JS
+  async destroyMap() {
+    // Apenas limpa as referências para permitir a coleta de lixo
+    this.clearMapObjects(); 
   }
 
   async retryLoadMap() {
+    // ... (Mantido inalterado, pois usa a lógica de localização e createMap)
     this.loadError.set(false);
     this.isLoading.set(true);
     try {
@@ -512,7 +549,10 @@ export class MapaPage implements OnInit, OnDestroy {
       } else {
         throw new Error('Não foi possível obter a localização do usuário.');
       }
+      
+      await this.loadGoogleMapsScript(); // Garante o script
       await this.createMap();
+      this.addUserMarker();
       this.addHospitalMarkers(this.hospitaisFiltrados);
       this.addRadiusCircle();
       this.isMapInitialized = true;

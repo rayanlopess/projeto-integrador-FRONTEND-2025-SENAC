@@ -6,7 +6,7 @@ import { Injectable } from '@angular/core';
 })
 export class RequiemDosDeusesService {
 
-  private baseUrl = 'http://10.241.134.113:2324'; // Adicione http://
+  private baseUrl = 'http://192.168.0.109:2324'; // Adicione http://
 
   constructor(public http: HttpClient) { }
 

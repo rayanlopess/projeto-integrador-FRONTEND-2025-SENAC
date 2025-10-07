@@ -23,12 +23,14 @@ ion-header {
   z-index: 5; /* ou mais, desde que seja maior que 1 */
 }
 .error-overlay {
+  width: 100%;
+  height: 75vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   color: #a4071a;
-  
+  position: absolute;
   z-index: 1000;
   padding: 20px;
   text-align: center;
