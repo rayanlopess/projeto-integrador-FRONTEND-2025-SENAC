@@ -28,9 +28,9 @@ import { sunny, moon, phonePortrait, close, arrowBackOutline } from 'ionicons/ic
 
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
-import { PopoverController } from '@ionic/angular/standalone';
+import { PopoverController, AlertController } from '@ionic/angular/standalone';
 
-
+import { App } from '@capacitor/app';
 
 @Component({
   selector: 'app-simple-popover',
@@ -73,6 +73,10 @@ import { PopoverController } from '@ionic/angular/standalone';
 
       <ion-item lines="none" button (click)="abrirCentralAjuda()">
         <ion-label>Central de Ajuda</ion-label>
+      </ion-item>
+
+      <ion-item lines="none" button (click)="sairApp()">
+        <ion-label class="cancelarAction">Sair</ion-label>
       </ion-item>
     </ion-list>
 
@@ -300,7 +304,8 @@ export class SimplePopoverComponent {
     private themeActionService: ThemeActionService,
     private themeService: ThemeService,
     private router: Router,
-    private popoverCtrl: PopoverController // Adicione esta linha
+    private popoverCtrl: PopoverController,
+    public alertController: AlertController
   ) {
     addIcons({ sunny, moon, phonePortrait, close, arrowBackOutline });
   }
@@ -371,8 +376,31 @@ export class SimplePopoverComponent {
     console.log('Tema atualizado:', this.themeInfo);
   }
 
-  irPagina() {
+  public async sairApp(): Promise<void> {
+   const alert = await this.alertController.create({
+      header: `Deseja realmente sair do App?`,
+      cssClass: 'container-alert',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'cancelarAction',
+          handler: () => {
+            console.log('Operação cancelada.');
+          },
+        },
+        {
+          text: 'Sim',
+          role: 'confirm',
+          cssClass: 'confirmarAction',
+          handler: async () => {
+            await App.exitApp();
+          },
+        },
+      ],
+    });
 
+    await alert.present();
   }
 
 }

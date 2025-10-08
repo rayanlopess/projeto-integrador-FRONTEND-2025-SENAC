@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -20,8 +20,8 @@ import {
     IonCardContent,
     IonList,
     IonItem,
-    IonRange, 
-    IonLabel, 
+    IonRange,
+    IonLabel,
 } from '@ionic/angular/standalone';
 import { AlertController } from '@ionic/angular/standalone';
 
@@ -63,7 +63,7 @@ import { Navigation } from '../../../services/navigation/navigation';
         IonItem,
         IonRange,
         IonLabel,
-        CommonModule, 
+        CommonModule,
         FormsModule
     ]
 })
@@ -90,6 +90,24 @@ export class ConfigUserPage implements OnInit {
 
     ngOnInit() {
         this.carregarConfiguracoes();
+        this.enderecoManual = '';
+    }
+    
+    @ViewChild('inputRef') inputElement: ElementRef | undefined;
+    @ViewChild('inputEnderecoManualRef') inputEnderecoManualRef: ElementRef | undefined;
+    limparInput(campo: 'enderecoManual') {
+        let inputRef: ElementRef | undefined;
+
+        if (campo === 'enderecoManual') {
+            this.enderecoManual = '';
+            inputRef = this.inputEnderecoManualRef;
+        }
+
+
+        // Retorna o foco
+        if (inputRef && inputRef.nativeElement) {
+            inputRef.nativeElement.focus();
+        }
     }
 
     async carregarConfiguracoes() {
@@ -185,11 +203,24 @@ export class ConfigUserPage implements OnInit {
         }, 200);
     }
 
-    selectPrediction(prediction: any) {
+    async selectPrediction(prediction: any) {
         // Remove a linha que atribui o valor à caixa de busca, deixando-a vazia
         this.predictions = [];
         this.usandoLocalizacaoAtual = false;
         this.salvarNovoEndereco(prediction.description, false);
+        const alert = await this.alertController.create({
+            header: 'Endereço adicionado com sucesso!',
+            buttons: [{
+                text: 'OK',
+                role: 'OK',
+                cssClass: 'confirmarAction',
+                handler: () => {
+
+                },
+            },],
+        });
+
+        await alert.present();
         setTimeout(() => {
             this.enderecoManual = '';
         }, 0);
@@ -223,8 +254,30 @@ export class ConfigUserPage implements OnInit {
             const alert = await this.alertController.create({
                 header: 'Erro',
                 message: 'Não foi possível obter sua localização. Verifique as permissões do aplicativo.',
-                buttons: ['OK']
+                buttons: [{
+                    text: 'OK',
+                    role: 'OK',
+                    cssClass: 'confirmarAction',
+                    handler: () => {
+
+                    },
+                },]
             });
+            await alert.present();
+        }
+        finally {
+            const alert = await this.alertController.create({
+                header: 'Localização adicionada com sucesso!',
+                buttons: [{
+                    text: 'OK',
+                    role: 'OK',
+                    cssClass: 'confirmarAction',
+                    handler: () => {
+
+                    },
+                },],
+            });
+
             await alert.present();
         }
     }
@@ -290,9 +343,11 @@ export class ConfigUserPage implements OnInit {
                 {
                     text: 'Cancelar',
                     role: 'cancel',
+                    cssClass: 'confirmarAction',
                 },
                 {
                     text: 'Excluir',
+                    cssClass: 'cancelarAction',
                     handler: () => {
                         // Filtra o array, removendo o endereço selecionado
                         this.enderecosSalvos = this.enderecosSalvos.filter(
@@ -331,8 +386,8 @@ export class ConfigUserPage implements OnInit {
         await alert.present();
     }
 
-    voltar() {
-        this.router.navigate(['/path/home']).then(() => {
+    async voltar() {
+        await this.router.navigate(['/path/home']).then(() => {
             window.location.reload();
         });
     }

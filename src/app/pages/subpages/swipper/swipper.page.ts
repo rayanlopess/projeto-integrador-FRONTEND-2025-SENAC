@@ -122,7 +122,7 @@ export class SwipperPage implements OnInit {
 
     // Se chegou aqui, checkbox está marcado
     this.isCheckboxInvalid = false; // Remove o erro
-    this.rt.navigate(['/path/home']);
+    this.rt.navigate(['/config-inicial']);
   }
 
 
@@ -156,9 +156,30 @@ export class SwipperPage implements OnInit {
 
   
   public async sairApp(): Promise<void> {
-    // Isso usa o código nativo do Android/iOS para forçar o fechamento do app.
-    // É o equivalente do "kick out" que você pediu.
-    await App.exitApp();
+   const alert = await this.alertController.create({
+      header: `Deseja realmente sair do App?`,
+      cssClass: 'container-alert',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'cancelarAction',
+          handler: () => {
+            console.log('Operação cancelada.');
+          },
+        },
+        {
+          text: 'Sim',
+          role: 'confirm',
+          cssClass: 'confirmarAction',
+          handler: async () => {
+            await App.exitApp();
+          },
+        },
+      ],
+    });
+
+    await alert.present();
   }
 
 

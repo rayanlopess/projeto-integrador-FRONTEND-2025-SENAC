@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+import { Geolocation } from '@capacitor/geolocation';
 
 import {
   IonHeader,
@@ -21,10 +23,11 @@ import {
 
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { search } from 'ionicons/icons';
+import { search, close } from 'ionicons/icons';
 import { HospitalService } from '../../../services/sistema-hospital/hospital'; // Add this import
 import { BuscarLocalizacao } from '../../../services/maps/buscar-localizacao';
 import { AlertController } from '@ionic/angular/standalone';
+import { GeocodificacaoService } from 'src/app/services/maps/geocodificacao';
 
 @Component({
   selector: 'app-config-inicial',
@@ -45,8 +48,8 @@ import { AlertController } from '@ionic/angular/standalone';
     IonRange,
     IonList,
     IonItem,
-    IonLabel, 
-    CommonModule, 
+    IonLabel,
+    CommonModule,
     FormsModule]
 })
 export class ConfigInicialPage implements OnInit {
@@ -64,13 +67,31 @@ export class ConfigInicialPage implements OnInit {
     private router: Router, // Changed from public rt to private router
     private alertController: AlertController,
     private hospitalService: HospitalService, // Added HospitalService
-    private buscarLocalizacaoService: BuscarLocalizacao
+    private buscarLocalizacaoService: BuscarLocalizacao,
+    private geocodificacaoService: GeocodificacaoService
   ) {
-    addIcons({ search });
+    addIcons({ search, close});
   }
 
   ngOnInit() {
   }
+
+  @ViewChild('inputRef') inputElement: ElementRef | undefined;
+    @ViewChild('inputEnderecoManualRef') inputEnderecoManualRef: ElementRef | undefined;
+    limparInput(campo: 'enderecoManual') {
+        let inputRef: ElementRef | undefined;
+
+        if (campo === 'enderecoManual') {
+            this.enderecoManual = '';
+            inputRef = this.inputEnderecoManualRef;
+        }
+
+
+        // Retorna o foco
+        if (inputRef && inputRef.nativeElement) {
+            inputRef.nativeElement.focus();
+        }
+    }
 
   pinFormatter(value: number) {
     return `${value}km`;
@@ -93,10 +114,23 @@ export class ConfigInicialPage implements OnInit {
     }
   }
 
-  selectPrediction(prediction: any) {
+  async selectPrediction(prediction: any) {
     this.enderecoManual = prediction.description;
     this.predictions = [];
     this.usandoLocalizacaoAtual = false;
+     const alert = await this.alertController.create({
+                header: 'Endereço adicionado com sucesso!',
+                buttons: [{
+                    text: 'OK',
+                    role: 'OK',
+                    cssClass: 'confirmarAction',
+                    handler: () => {
+
+                    },
+                },],
+            });
+
+            await alert.present();
   }
 
   async salvarConfig() {
@@ -155,9 +189,45 @@ export class ConfigInicialPage implements OnInit {
     }
   }
 
-  usarLocalizacaoAtual() {
+  async usarLocalizacaoAtual() {
     this.usandoLocalizacaoAtual = true;
-    this.class_enderecoManual = ''; // Remove qualquer erro do campo de endereço manual
+    this.class_enderecoManual = '';
+
+
+    const coordinates = await Geolocation.getCurrentPosition();
+            const lat = coordinates.coords.latitude;
+            const lng = coordinates.coords.longitude;
+
+            // Chama o novo serviço para obter o endereço
+            const enderecoEncontrado = await this.geocodificacaoService.getAddressFromCoords(lat, lng).toPromise();
+
+            // Encontra o endereço mais relevante (ex: com nome de rua e número)
+            let descricao = 'Localização Atual';
+            if (enderecoEncontrado.results && enderecoEncontrado.results.length > 0) {
+                const formattedAddress = enderecoEncontrado.results.find((result: any) => result.types.includes('route') || result.types.includes('street_address'));
+                if (formattedAddress) {
+                    this.enderecoManual = formattedAddress.formatted_address;
+                } else {
+                    // Se não encontrar uma rua, use o endereço mais geral
+                    this.enderecoManual = enderecoEncontrado.results[0].formatted_address;
+                }
+            }
+
+
+
+     const alert = await this.alertController.create({
+                header: 'Localização adicionada com sucesso!',
+                buttons: [{
+                    text: 'OK',
+                    role: 'OK',
+                    cssClass: 'confirmarAction',
+                    handler: () => {
+
+                    },
+                },],
+            });
+
+            await alert.present();
   }
 
   // Added method to handle manual address input

@@ -242,7 +242,7 @@ export class MapaPage implements OnInit, OnDestroy {
 
     const zoomLevel = this.calculateZoomLevel(this.raioKm);
     
-    // **ALTERAÇÃO:** Criação do mapa usando 'google.maps.Map'
+   
     this.newMap = new google.maps.Map(this.mapRef.nativeElement, {
       center: this.userLocation,
       zoom: zoomLevel,
@@ -282,7 +282,7 @@ export class MapaPage implements OnInit, OnDestroy {
 
   private calculateZoomLevel(radiusKm: number): number {
     // A lógica de cálculo do zoom pode ser mantida, mas também podemos usar fitBounds
-    if (radiusKm <= 10) return 12;
+    if (radiusKm <= 10) return 11.3;
     if (radiusKm <= 20) return 10.3;
     if (radiusKm <= 30) return 9.7;
     if (radiusKm <= 40) return 9.3;
@@ -359,6 +359,18 @@ export class MapaPage implements OnInit, OnDestroy {
     }
   }
 
+  private abrirNoMapa(hospital: HospitalProcessado) {
+    const userLocation = this.hospitalService.getLocalizacaoAtual();
+    
+    if (userLocation) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${hospital.nome}&travelmode=driving`;
+      window.open(url, '_blank');
+    } else {
+      const url = `https://www.google.com/maps/search/?api=1&query=${hospital.lati},${hospital.longi}`;
+      window.open(url, '_blank');
+    }
+  }
+
 
   async addRadiusCircle() {
     if (!this.newMap || !this.userLocation) {
@@ -388,7 +400,7 @@ export class MapaPage implements OnInit, OnDestroy {
 
       // **ALTERAÇÃO:** Ajusta o zoom do mapa para incluir o círculo
       const center = new google.maps.LatLng(this.userLocation.lat, this.userLocation.lng);
-      const radiusInMeters = this.raioKm * 500;
+      const radiusInMeters = this.raioKm * 1000;
       const bounds = this.getBounds(center, radiusInMeters);
       this.newMap.fitBounds(bounds);
       
@@ -416,7 +428,7 @@ export class MapaPage implements OnInit, OnDestroy {
 
   async showHospitalInfo(markerTitle: string) {
     try {
-      // **ALTERAÇÃO:** Busca o hospital pelo título (que é o nome)
+      
       const hospital = this.hospitaisFiltrados.find(h => h.nome === markerTitle);
       if (!hospital) return;
 
@@ -437,7 +449,7 @@ export class MapaPage implements OnInit, OnDestroy {
             role: 'confirm',
             cssClass: 'confirmarAction',
             handler: async () => {
-                // Lógica de navegação
+                this.abrirNoMapa(hospital)
             },
           },
         ],

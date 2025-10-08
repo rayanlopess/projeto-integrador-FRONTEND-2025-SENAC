@@ -1,6 +1,6 @@
 {
     "/requisicao":{
-        "target": "http://10.241.134.113:2324/",
+        "target": "http://10.241.238.192:2324/",
         "secure": false,
         "changeOrigin": true,
         "logLevel": "debug"

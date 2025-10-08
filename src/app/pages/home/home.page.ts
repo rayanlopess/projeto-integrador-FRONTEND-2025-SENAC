@@ -92,13 +92,11 @@ public hospitalPhoto: string | null = null; // Base64 da foto
     if (this.subscription) {
       this.subscription.unsubscribe();
     }
+    
   }
 
   handleRefresh(event: CustomEvent<RefresherEventDetail>) {
      this.isRefreshing = true;
-
-    
-
     setTimeout(() => {
       this.isRefreshing = false;
       event.detail.complete(); 

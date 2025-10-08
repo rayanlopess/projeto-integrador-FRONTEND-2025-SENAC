@@ -41,7 +41,7 @@
             <div class="wave-group">
               <input required type="text" class="input-tecido" placeholder="Ex.: Rua da Alegria, 123"
                 [(ngModel)]="enderecoManual" [class]="class_enderecoManual" (focus)="usandoLocalizacaoAtual = false"
-                (input)="onAddressInput($event)" (ionBlur)="onInputBlur()">
+                (input)="onAddressInput($event)" (ionBlur)="onInputBlur()" #inputEnderecoManualRef>
               <label class="label">
                 <span class="label-char" style="--index: 0">P</span>
                 <span class="label-char" style="--index: 1">e</span>
@@ -64,10 +64,20 @@
                 <span class="label-char" style="--index: 19">o</span>
               </label>
             </div>
+
+            <div class="icon-search">
+              <ion-buttons>
+                <ion-button *ngIf="enderecoManual" fill="clear" class="clear-button" [hidden]="!enderecoManual"
+                  (click)="limparInput('enderecoManual')">
+                  <ion-icon name="close"></ion-icon>
+                </ion-button>
+              </ion-buttons>
+            </div>
+
           </div>
           <span class="bar"></span>
         </div>
-        <div class="prediction-div">
+        <div class="prediction-div" *ngIf="enderecoManual!=''">
           <ion-list *ngIf="predictions.length > 0" class="autocomplete-list">
             <ion-item lines="none" id="item-prediction" *ngFor="let prediction of predictions"
               (click)="selectPrediction(prediction)" button>
